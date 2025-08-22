@@ -6,9 +6,15 @@
     <title>Interactive 2D Fourier Transform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+        }
+        .thai {
+            font-family: 'Sarabun', sans-serif;
         }
         .canvas-container {
             border: 2px solid #e2e8f0;
@@ -30,104 +36,185 @@
             color: white;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
-        /* Style for file input button */
         input[type="file"]::file-selector-button {
             @apply btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md cursor-pointer;
         }
+        /* Sidebar styles */
+        .sidebar-link {
+            @apply block w-full text-left px-4 py-2 text-lg rounded-md text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition-colors;
+        }
+        .sidebar-link.active {
+            @apply bg-indigo-600 text-white font-semibold;
+        }
+        /* Page content styles */
+        .page-content {
+            display: none; /* Hidden by default */
+        }
+        .page-content.active {
+            display: block; /* Shown when active */
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 flex flex-col items-center justify-center min-h-screen p-4 md:p-8">
+<body class="bg-gray-100 text-gray-800">
 
-    <div class="w-full max-w-6xl mx-auto">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">Interactive 2D Fourier Transform</h1>
-            <p class="text-lg text-gray-600 mt-2">An interactive tool to build intuition on how 2D images are represented by their frequency components.</p>
-        </header>
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-md p-4 space-y-2">
+            <h1 class="text-2xl font-bold text-gray-900 mb-6 px-2">2D FT Explorer</h1>
+            <nav>
+                <a href="#" class="sidebar-link active" data-page="demo">Interactive Demo</a>
+                <a href="#" class="sidebar-link" data-page="theory">Theory Explained</a>
+                <a href="#" class="sidebar-link" data-page="gallery">Examples Gallery</a>
+            </nav>
+        </aside>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-            <!-- Input Canvas Column -->
-            <div class="flex flex-col items-center">
-                <h2 class="text-2xl font-semibold mb-3">Spatial Domain (Your Image)</h2>
-                <div class="canvas-container bg-white">
-                    <canvas id="inputCanvas" width="256" height="256"></canvas>
-                </div>
-                 <p class="text-center text-gray-600 mt-4 max-w-md">This is the <strong>spatial domain</strong>. Draw a shape, or load an image below.</p>
-                <div id="controls" class="mt-4 flex flex-wrap gap-3 justify-center">
-                    <button id="drawBtn" class="btn active bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Draw</button>
-                    <button id="rectBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Rectangle</button>
-                    <button id="circleBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Circle</button>
-                    <button id="lineBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Line</button>
-                    <button id="clearBtn" class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Clear</button>
-                </div>
-                <!-- Image Loading Section -->
-                <div class="mt-6 pt-6 border-t w-full max-w-md">
-                    <h3 class="text-lg font-semibold text-center mb-3">Or Load an Image</h3>
-                     <div class="space-y-3">
-                        <div>
-                            <label for="imageUpload" class="sr-only">Upload Image</label>
-                            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-500">
+        <!-- Main Content -->
+        <main class="flex-1 p-6 md:p-10">
+            <!-- Page 1: Interactive Demo -->
+            <div id="page-demo" class="page-content active">
+                <header class="text-center mb-8">
+                    <h1 class="text-4xl font-bold text-gray-900">Interactive 2D Fourier Transform</h1>
+                    <p class="text-lg text-gray-600 mt-2">Build intuition by seeing the frequency domain change in real-time.</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <!-- Input Canvas Column -->
+                    <div class="flex flex-col items-center">
+                        <h2 class="text-2xl font-semibold mb-3">Spatial Domain (Your Image)</h2>
+                        <div class="canvas-container bg-white">
+                            <canvas id="inputCanvas" width="256" height="256"></canvas>
                         </div>
-                        <div class="flex gap-2">
-                            <input type="text" id="imageUrl" placeholder="Enter image URL" class="flex-grow p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
-                            <button id="loadUrlBtn" class="btn bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Load</button>
+                        <p class="text-center text-gray-600 mt-4 max-w-md">Draw a shape, or load an image below.</p>
+                        <div id="controls" class="mt-4 flex flex-wrap gap-3 justify-center">
+                            <button id="drawBtn" class="btn active bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Draw</button>
+                            <button id="rectBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Rectangle</button>
+                            <button id="circleBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Circle</button>
+                            <button id="lineBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Line</button>
+                            <button id="clearBtn" class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Clear</button>
                         </div>
-                        <p id="error-message" class="text-red-500 text-sm text-center h-4"></p>
+                        <div class="mt-6 pt-6 border-t w-full max-w-md">
+                            <h3 class="text-lg font-semibold text-center mb-3">Or Load an Image</h3>
+                            <div class="space-y-3">
+                                <div><input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-500"></div>
+                                <div class="flex gap-2">
+                                    <input type="text" id="imageUrl" placeholder="Enter image URL" class="flex-grow p-2 border border-gray-300 rounded-lg">
+                                    <button id="loadUrlBtn" class="btn bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Load</button>
+                                </div>
+                                <p id="error-message" class="text-red-500 text-sm text-center h-4"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Output Canvas Column -->
+                    <div class="flex flex-col items-center">
+                        <h2 class="text-2xl font-semibold mb-3">Frequency Domain (k-space)</h2>
+                        <div class="canvas-container bg-black"><canvas id="outputCanvas" width="256" height="256"></canvas></div>
+                        <div class="text-left text-gray-600 mt-4 max-w-md space-y-2">
+                            <p>This is the <strong>frequency domain</strong>. It shows the image's frequency components.</p>
+                            <ul class="list-disc list-inside space-y-1">
+                                <li><strong>Center:</strong> Low frequencies (overall brightness).</li>
+                                <li><strong>Edges:</strong> High frequencies (fine details, sharp edges).</li>
+                                <li><strong>Direction:</strong> Corresponds to feature orientation.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Output Canvas Column -->
-            <div class="flex flex-col items-center">
-                <h2 class="text-2xl font-semibold mb-3">Frequency Domain (k-space)</h2>
-                <div class="canvas-container bg-black">
-                    <canvas id="outputCanvas" width="256" height="256"></canvas>
-                </div>
-                 <div class="text-left text-gray-600 mt-4 max-w-md space-y-2">
-                    <p>This is the <strong>frequency domain</strong> (or <strong>k-space</strong>). It shows the image's frequency components.</p>
-                    <ul class="list-disc list-inside space-y-1">
-                        <li><strong>Center (Low Frequencies):</strong> Represents the image's overall brightness.</li>
-                        <li><strong>Edges (High Frequencies):</strong> Represents fine details and sharp edges.</li>
-                        <li><strong>Direction:</strong> The angle corresponds to feature orientation (e.g., a vertical line creates a horizontal feature in k-space).</li>
+            <!-- Page 2: Theory Explained (Updated to Thai) -->
+            <div id="page-theory" class="page-content thai">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">ทฤษฎีเบื้องหลังการแปลงฟูเรียร์ 2 มิติ (2D Fourier Transform)</h1>
+                <div class="prose max-w-none text-lg">
+                    <p>สำหรับนักรังสีเทคนิค การทำความเข้าใจการแปลงฟูเรียร์ (Fourier Transform) คือหัวใจสำคัญของการสร้างภาพทางการแพทย์ โดยเฉพาะอย่างยิ่งในเครื่อง MRI และ CT Scan</p>
+                    <p>การแปลงฟูเรียร์ 2 มิติ คือเครื่องมือทางคณิตศาสตร์ที่ใช้ในการ "แยกส่วนประกอบ" ของภาพออกเป็นคลื่นความถี่ (sine wave) ที่แตกต่างกัน พูดง่ายๆ คือการเปลี่ยนภาพจาก **โดเมนตำแหน่ง (Spatial Domain)** ที่เราเห็นเป็นพิกเซล (x, y) ไปสู่ **โดเมนความถี่ (Frequency Domain)** หรือที่นักรังสีเทคนิคคุ้นเคยในชื่อ **k-space**</p>
+                    
+                    <h2 class="text-2xl font-bold mt-8 mb-4">k-space คืออะไร และสำคัญอย่างไร?</h2>
+                    <p>k-space ไม่ใช่ภาพที่เรามองเห็น แต่เป็น "แผนที่" ของข้อมูลความถี่ของภาพนั้นๆ เครื่อง MRI ไม่ได้ถ่ายภาพโดยตรง แต่จะทำการ "เติม" ข้อมูลลงใน k-space ทีละบรรทัด จากนั้นจึงใช้กระบวนการที่เรียกว่า **Inverse Fourier Transform** เพื่อแปลงข้อมูลใน k-space กลับมาเป็นภาพที่เราใช้ในการวินิจฉัย</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-6 items-center bg-white p-4 rounded-lg shadow">
+                        <div class="text-center">
+                            <img src="https://source.roboflow.com/59VfxVNXVrKg7adWAZ4J/3nLw9OWhCfs8EaANo6wR/original.jpg" alt="Brain MRI" class="mx-auto rounded-lg" onerror="this.onerror=null;this.src='https://placehold.co/256x256/cccccc/000000?text=Image+Not+Found';">
+                            <p class="mt-2 font-semibold">ภาพ MRI สมอง (Spatial Domain)</p>
+                            <p class="text-sm">ภาพที่เราเห็นและใช้วินิจฉัย ประกอบด้วยพิกเซลที่ตำแหน่งต่างๆ</p>
+                        </div>
+                        <div class="text-center">
+                            <img src="https://placehold.co/256x256/000000/FFFFFF?text=k-space" alt="k-space of Brain MRI" class="mx-auto rounded-lg" onerror="this.onerror=null;this.src='https://placehold.co/256x256/cccccc/000000?text=Image+Not+Found';">
+                            <p class="mt-2 font-semibold">k-space ของภาพ (Frequency Domain)</p>
+                            <p class="text-sm">ข้อมูลดิบที่เครื่องสแกนเก็บมาได้ก่อนจะแปลงเป็นภาพ</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold mt-6">ส่วนประกอบของ k-space:</h3>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>จุดศูนย์กลาง (Low Frequencies):</strong> เป็นส่วนที่สว่างที่สุดและมีความสำคัญมากที่สุดใน k-space ข้อมูลส่วนนี้จะกำหนด **ความเปรียบต่าง (Contrast)** และโครงสร้างโดยรวมของภาพ ถ้าข้อมูลส่วนกลางหายไป ภาพที่ได้จะขาดความเปรียบต่างและดูมืด</li>
+                        <li><strong>ขอบด้านนอก (High Frequencies):</strong> ข้อมูลที่อยู่ไกลจากจุดศูนย์กลางออกไป จะเป็นตัวกำหนด **ความคมชัด (Resolution)** และรายละเอียดเล็กๆ ของภาพ เช่น ขอบของอวัยวะต่างๆ ถ้าขาดข้อมูลส่วนนี้ไป ภาพที่ได้จะเบลอและขาดรายละเอียด</li>
+                    </ul>
+
+                    <h2 class="text-2xl font-bold mt-8">ทำไมความเข้าใจนี้จึงสำคัญต่อนักรังสีเทคนิค?</h2>
+                    <p>การเข้าใจความสัมพันธ์ระหว่าง k-space และภาพสุดท้าย ช่วยให้เราเข้าใจว่า:</p>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>สิ่งแปลกปลอมในภาพ (Artifacts):</strong> การเคลื่อนไหวของผู้ป่วยระหว่างการสแกน จะทำให้ข้อมูลใน k-space ผิดเพี้ยนไป (โดยเฉพาะส่วนความถี่สูง) ส่งผลให้เกิด "ภาพซ้อน" หรือ "ภาพเบลอ" ในภาพสุดท้าย</li>
+                        <li><strong>การเลือกพารามิเตอร์ (Parameter Selection):</strong> การปรับค่าต่างๆ เช่น Matrix size หรือ Field of View (FOV) ในเครื่องสแกน เป็นการกำหนดว่าเราจะเก็บข้อมูลใน k-space ละเอียดแค่ไหน ซึ่งส่งผลโดยตรงต่อความละเอียดและเวลาที่ใช้ในการสแกน</li>
+                        <li><strong>เทคนิคการสร้างภาพแบบใหม่ๆ:</strong> เทคนิคอย่าง Parallel Imaging หรือ Compressed Sensing ใช้วิธีการเก็บข้อมูลใน k-space แบบไม่ครบถ้วนเพื่อลดเวลาในการสแกน การมีความรู้พื้นฐานเรื่องนี้จะช่วยให้เข้าใจหลักการทำงานของเทคนิคเหล่านี้ได้ดียิ่งขึ้น</li>
                     </ul>
                 </div>
             </div>
-        </div>
 
-        <!-- Explanations and Experiments -->
-        <div class="mt-12 pt-8 border-t border-gray-200">
-            <h2 class="text-3xl font-bold text-center mb-6">Experiment and Observe</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-center">
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="font-semibold text-lg mb-2">Vertical Line</h3>
-                    <p class="text-sm text-gray-600">Draw a thin vertical line. Notice the bright horizontal line in k-space? This shows high-frequency content only in the horizontal direction.</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="font-semibold text-lg mb-2">Grid Pattern</h3>
-                    <p class="text-sm text-gray-600">Draw several parallel lines. See the distinct, repeating bright spots? The spacing of these spots is inversely related to the spacing of the lines you drew!</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <h3 class="font-semibold text-lg mb-2">Small vs. Large Circle</h3>
-                    <p class="text-sm text-gray-600">Draw a small circle, then a large one. Notice how the rings in k-space get closer together as the circle in the spatial domain gets larger. This is a key FT property!</p>
+            <!-- Page 3: Examples Gallery -->
+            <div id="page-gallery" class="page-content">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">Examples Gallery</h1>
+                <p class="text-lg text-gray-600">Here are some interesting examples of images and their corresponding k-space representations.</p>
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Example 1 -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-lg mb-2">Brick Wall</h3>
+                        <p class="text-sm text-gray-600">A brick wall, with its repeating horizontal and vertical lines, produces a distinct grid-like pattern of bright spots in k-space.</p>
+                        <!-- Placeholder for images -->
+                    </div>
+                    <!-- Example 2 -->
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h3 class="font-semibold text-lg mb-2">Fingerprint</h3>
+                        <p class="text-sm text-gray-600">The swirling patterns of a fingerprint create a diffuse, ring-like structure in the frequency domain, indicating dominant frequencies at a certain radius from the center.</p>
+                        <!-- Placeholder for images -->
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Canvas and Context Setup ---
+        // --- Page Navigation Logic ---
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+        const pageContents = document.querySelectorAll('.page-content');
+
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = e.target.getAttribute('data-page');
+
+                // Update active link
+                sidebarLinks.forEach(l => l.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Update active page
+                pageContents.forEach(p => p.classList.remove('active'));
+                document.getElementById(`page-${page}`).classList.add('active');
+            });
+        });
+
+        // --- FFT Demo Logic (from previous version) ---
         const inputCanvas = document.getElementById('inputCanvas');
+        if (!inputCanvas) return; // Don't run FFT code if canvas isn't on the page
+        
         const outputCanvas = document.getElementById('outputCanvas');
         const inputCtx = inputCanvas.getContext('2d');
         const outputCtx = outputCanvas.getContext('2d');
         const size = 256;
 
-        // --- State Variables ---
         let drawing = false;
         let startX, startY;
         let currentMode = 'draw';
 
-        // --- DOM Element References ---
         const controls = {
             drawBtn: document.getElementById('drawBtn'),
             rectBtn: document.getElementById('rectBtn'),
@@ -140,7 +227,6 @@
         const loadUrlBtn = document.getElementById('loadUrlBtn');
         const errorMessage = document.getElementById('error-message');
 
-        // --- Event Listeners ---
         Object.keys(controls).forEach(key => {
             if (key === 'clearBtn') {
                 controls[key].addEventListener('click', clearCanvas);
@@ -157,17 +243,11 @@
         imageUpload.addEventListener('change', handleImageUpload);
         loadUrlBtn.addEventListener('click', handleUrlLoad);
 
-        // --- Functions ---
-
         function setActiveButton(mode) {
             currentMode = mode;
             Object.values(controls).forEach(btn => btn.classList.remove('active', 'bg-indigo-600', 'text-white'));
-            controls.drawBtn.classList.remove('bg-red-500'); 
-
             const activeBtn = controls[`${mode}Btn`];
-            if (activeBtn) {
-                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
-            }
+            if (activeBtn) activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
         }
 
         function initializeCanvases() {
@@ -180,12 +260,10 @@
 
         function clearCanvas() {
             initializeCanvases();
-            imageUpload.value = ''; // Reset file input
-            imageUrlInput.value = ''; // Reset URL input
+            imageUpload.value = '';
+            imageUrlInput.value = '';
             errorMessage.textContent = '';
         }
-
-        // --- Image Loading Logic ---
 
         function handleImageUpload(e) {
             const file = e.target.files[0];
@@ -193,12 +271,8 @@
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
-                    img.onload = () => {
-                        loadImageOntoCanvas(img);
-                    };
-                    img.onerror = () => {
-                        errorMessage.textContent = 'Could not load the selected file.';
-                    };
+                    img.onload = () => loadImageOntoCanvas(img);
+                    img.onerror = () => errorMessage.textContent = 'Could not load the file.';
                     img.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
@@ -210,36 +284,27 @@
             if (url) {
                 errorMessage.textContent = 'Loading...';
                 const img = new Image();
-                // Important for loading images from other domains
                 img.crossOrigin = "Anonymous";
                 img.onload = () => {
                     loadImageOntoCanvas(img);
                     errorMessage.textContent = '';
                 };
-                img.onerror = () => {
-                    errorMessage.textContent = 'Failed to load image from URL.';
-                };
+                img.onerror = () => errorMessage.textContent = 'Failed to load image from URL.';
                 img.src = url;
             }
         }
 
         function loadImageOntoCanvas(img) {
-            // Clear canvas first
             inputCtx.fillStyle = 'black';
             inputCtx.fillRect(0, 0, size, size);
-            
-            // Draw image, maintaining aspect ratio
             const scale = Math.min(size / img.width, size / img.height);
             const w = img.width * scale;
             const h = img.height * scale;
             const x = (size - w) / 2;
             const y = (size - h) / 2;
             inputCtx.drawImage(img, x, y, w, h);
-            
             updateFFT();
         }
-
-        // --- Drawing Logic ---
 
         function handleMouseDown(e) {
             drawing = true;
@@ -272,11 +337,9 @@
             const rect = inputCanvas.getBoundingClientRect();
             const endX = e.clientX - rect.left;
             const endY = e.clientY - rect.top;
-
             inputCtx.fillStyle = 'white';
             inputCtx.strokeStyle = 'white';
             inputCtx.lineWidth = 3;
-
             switch (currentMode) {
                 case 'rect':
                     inputCtx.fillRect(startX, startY, endX - startX, endY - startY);
@@ -304,20 +367,13 @@
             }
         }
 
-        // --- 2D FFT Core Logic ---
         function updateFFT() {
             const imageData = inputCtx.getImageData(0, 0, size, size);
             const inputData = new Array(size * size);
-            // Convert to grayscale
             for (let i = 0; i < imageData.data.length; i += 4) {
-                // Using luminance formula for better grayscale conversion
-                const r = imageData.data[i];
-                const g = imageData.data[i+1];
-                const b = imageData.data[i+2];
-                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                inputData[i / 4] = gray / 255.0; // Normalize
+                const gray = 0.299 * imageData.data[i] + 0.587 * imageData.data[i+1] + 0.114 * imageData.data[i+2];
+                inputData[i / 4] = gray / 255.0;
             }
-
             const complexData = fft2d(inputData, size);
             fftShift(complexData, size);
             visualize(complexData, size);
@@ -325,26 +381,16 @@
 
         function fft2d(data, N) {
             const complexData = data.map(val => ({ re: val, im: 0 }));
-
-            // FFT on each row
             for (let y = 0; y < N; y++) {
                 const row = complexData.slice(y * N, (y + 1) * N);
                 const fftRow = fft(row);
-                for (let x = 0; x < N; x++) {
-                    complexData[y * N + x] = fftRow[x];
-                }
+                for (let x = 0; x < N; x++) complexData[y * N + x] = fftRow[x];
             }
-
-            // FFT on each column
             for (let x = 0; x < N; x++) {
                 const col = [];
-                for (let y = 0; y < N; y++) {
-                    col.push(complexData[y * N + x]);
-                }
+                for (let y = 0; y < N; y++) col.push(complexData[y * N + x]);
                 const fftCol = fft(col);
-                for (let y = 0; y < N; y++) {
-                    complexData[y * N + x] = fftCol[y];
-                }
+                for (let y = 0; y < N; y++) complexData[y * N + x] = fftCol[y];
             }
             return complexData;
         }
@@ -352,10 +398,7 @@
         function fft(a) {
             const N = a.length;
             if (N <= 1) return a;
-
             if (N % 2 !== 0) {
-                console.warn("FFT size not a power of 2, this may be slow.");
-                // Fallback for non-power-of-2 sizes (DFT)
                 const result = [];
                 for (let k = 0; k < N; k++) {
                     let re = 0, im = 0;
@@ -368,10 +411,8 @@
                 }
                 return result;
             }
-            
             const even = fft(a.filter((_, i) => i % 2 === 0));
             const odd = fft(a.filter((_, i) => i % 2 !== 0));
-
             const result = new Array(N);
             for (let k = 0; k < N / 2; k++) {
                 const angle = -2 * Math.PI * k / N;
@@ -389,11 +430,9 @@
             const halfN = Math.floor(N / 2);
             for (let y = 0; y < halfN; y++) {
                 for (let x = 0; x < halfN; x++) {
-                    // Swap top-left with bottom-right
                     let tmp = data[y * N + x];
                     data[y * N + x] = data[(y + halfN) * N + (x + halfN)];
                     data[(y + halfN) * N + (x + halfN)] = tmp;
-                    // Swap top-right with bottom-left
                     tmp = data[y * N + (x + halfN)];
                     data[y * N + (x + halfN)] = data[(y + halfN) * N + x];
                     data[(y + halfN) * N + x] = tmp;
@@ -405,17 +444,12 @@
             const outputImageData = outputCtx.createImageData(N, N);
             const magnitudes = new Float32Array(N * N);
             let maxMag = 0;
-
             for (let i = 0; i < N * N; i++) {
                 const mag = Math.sqrt(complexData[i].re * complexData[i].re + complexData[i].im * complexData[i].im);
-                magnitudes[i] = Math.log(1 + mag); // Log scale for better visibility
-                if (magnitudes[i] > maxMag) {
-                    maxMag = magnitudes[i];
-                }
+                magnitudes[i] = Math.log(1 + mag);
+                if (magnitudes[i] > maxMag) maxMag = magnitudes[i];
             }
-            
             if (maxMag === 0) maxMag = 1;
-
             for (let i = 0; i < N * N; i++) {
                 const value = (magnitudes[i] / maxMag) * 255;
                 const index = i * 4;
@@ -427,7 +461,6 @@
             outputCtx.putImageData(outputImageData, 0, 0);
         }
 
-        // --- Initial Call ---
         setActiveButton('draw');
         initializeCanvases();
     });
