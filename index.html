@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 2D Fourier Transform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .canvas-container {
+            border: 2px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        canvas {
+            cursor: crosshair;
+        }
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .btn.active {
+            background-color: #4f46e5;
+            color: white;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Interactive 2D Fourier Transform</h1>
+            <p class="text-md text-gray-600 mt-1">Draw on the left canvas to see its frequency spectrum on the right.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <!-- Input Canvas Column -->
+            <div class="flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2">Spatial Domain (Your Image)</h2>
+                <div class="canvas-container bg-white">
+                    <canvas id="inputCanvas" width="256" height="256"></canvas>
+                </div>
+                <div id="controls" class="mt-4 flex flex-wrap gap-3 justify-center">
+                    <button id="drawBtn" class="btn active bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Draw</button>
+                    <button id="rectBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Rectangle</button>
+                    <button id="circleBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Circle</button>
+                    <button id="lineBtn" class="btn bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 border border-gray-300 rounded-lg shadow-md">Line</button>
+                    <button id="clearBtn" class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">Clear</button>
+                </div>
+            </div>
+
+            <!-- Output Canvas Column -->
+            <div class="flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2">Frequency Domain (k-space)</h2>
+                <div class="canvas-container bg-black">
+                    <canvas id="outputCanvas" width="256" height="256"></canvas>
+                </div>
+                 <p class="text-sm text-gray-500 mt-4 text-center">Center represents low frequencies, edges represent high frequencies.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Main script for the interactive 2D Fourier Transform application
+    document.addEventListener('DOMContentLoaded', () => {
+        const inputCanvas = document.getElementById('inputCanvas');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const inputCtx = inputCanvas.getContext('2d');
+        const outputCtx = outputCanvas.getContext('2d');
+
+        const size = 256;
+        let drawing = false;
+        let startX, startY;
+        let currentMode = 'draw'; // Modes: 'draw', 'rect', 'circle', 'line'
+
+        // --- Control Button Event Listeners ---
+        const controls = {
+            drawBtn: document.getElementById('drawBtn'),
+            rectBtn: document.getElementById('rectBtn'),
+            circleBtn: document.getElementById('circleBtn'),
+            lineBtn: document.getElementById('lineBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+        };
+
+        function setActiveButton(mode) {
+            currentMode = mode;
+            Object.values(controls).forEach(btn => btn.classList.remove('active', 'bg-indigo-600', 'text-white'));
+            controls.drawBtn.classList.remove('bg-red-500'); // special case for clear
+
+            const activeBtn = controls[`${mode}Btn`];
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+            }
+        }
+
+        controls.drawBtn.addEventListener('click', () => setActiveButton('draw'));
+        controls.rectBtn.addEventListener('click', () => setActiveButton('rect'));
+        controls.circleBtn.addEventListener('click', () => setActiveButton('circle'));
+        controls.lineBtn.addEventListener('click', () => setActiveButton('line'));
+        controls.clearBtn.addEventListener('click', clearCanvas);
+        
+        // --- Canvas Initialization and Drawing Logic ---
+        function initializeCanvases() {
+            inputCtx.fillStyle = 'black';
+            inputCtx.fillRect(0, 0, size, size);
+            outputCtx.fillStyle = 'black';
+            outputCtx.fillRect(0, 0, size, size);
+            updateFFT();
+        }
+
+        function clearCanvas() {
+            inputCtx.fillStyle = 'black';
+            inputCtx.fillRect(0, 0, size, size);
+            updateFFT();
+        }
+
+        // Mouse event handlers for drawing on the input canvas
+        inputCanvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            const rect = inputCanvas.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            if (currentMode === 'draw') {
+                inputCtx.beginPath();
+                inputCtx.moveTo(startX, startY);
+            }
+        });
+
+        inputCanvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+            const rect = inputCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (currentMode === 'draw') {
+                inputCtx.lineTo(x, y);
+                inputCtx.strokeStyle = 'white';
+                inputCtx.lineWidth = 5;
+                inputCtx.lineCap = 'round';
+                inputCtx.stroke();
+                inputCtx.beginPath();
+                inputCtx.moveTo(x, y);
+            }
+        });
+
+        inputCanvas.addEventListener('mouseup', (e) => {
+            if (!drawing) return;
+            drawing = false;
+            const rect = inputCanvas.getBoundingClientRect();
+            const endX = e.clientX - rect.left;
+            const endY = e.clientY - rect.top;
+
+            // For shape modes, draw the final shape on mouse up
+            inputCtx.fillStyle = 'white';
+            inputCtx.strokeStyle = 'white';
+            inputCtx.lineWidth = 3;
+
+            switch (currentMode) {
+                case 'rect':
+                    inputCtx.fillRect(startX, startY, endX - startX, endY - startY);
+                    break;
+                case 'circle':
+                    const radius = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                    inputCtx.beginPath();
+                    inputCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                    inputCtx.fill();
+                    break;
+                case 'line':
+                    inputCtx.beginPath();
+                    inputCtx.moveTo(startX, startY);
+                    inputCtx.lineTo(endX, endY);
+                    inputCtx.stroke();
+                    break;
+            }
+            updateFFT();
+        });
+        
+        inputCanvas.addEventListener('mouseleave', () => {
+            if (drawing && currentMode === 'draw') {
+                 drawing = false;
+                 updateFFT();
+            }
+        });
+
+        // --- 2D FFT Core Logic ---
+        function updateFFT() {
+            const imageData = inputCtx.getImageData(0, 0, size, size);
+            const inputData = new Array(size * size);
+            // We only need the grayscale value, so we take one channel (e.g., red)
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                inputData[i / 4] = imageData.data[i] / 255.0; // Normalize to 0-1
+            }
+
+            // This is a placeholder for a real 2D FFT implementation.
+            // A full FFT is complex, so we use a simplified structure here.
+            // The core idea is to perform 1D FFT on rows, then on columns.
+            const complexData = fft2d(inputData, size);
+            
+            // Shift the zero-frequency component to the center
+            fftShift(complexData, size);
+
+            // Calculate magnitude and visualize
+            visualize(complexData, size);
+        }
+
+        /**
+         * Performs a 2D Fast Fourier Transform.
+         * @param {number[]} data - The input grayscale image data (1D array).
+         * @param {number} N - The width/height of the square image.
+         * @returns {Array} A 2D array of complex numbers [{re, im}, ...].
+         */
+        function fft2d(data, N) {
+            // This implementation performs FFT on rows, then on columns.
+            const complexData = [];
+            for (let i = 0; i < N * N; i++) {
+                complexData[i] = { re: data[i], im: 0 };
+            }
+
+            // 1. FFT on each row
+            for (let y = 0; y < N; y++) {
+                const row = complexData.slice(y * N, (y + 1) * N);
+                const fftRow = fft(row);
+                for (let x = 0; x < N; x++) {
+                    complexData[y * N + x] = fftRow[x];
+                }
+            }
+
+            // 2. FFT on each column
+            for (let x = 0; x < N; x++) {
+                const col = [];
+                for (let y = 0; y < N; y++) {
+                    col.push(complexData[y * N + x]);
+                }
+                const fftCol = fft(col);
+                for (let y = 0; y < N; y++) {
+                    complexData[y * N + x] = fftCol[y];
+                }
+            }
+            return complexData;
+        }
+
+        /**
+         * Performs a 1D Cooley-Tukey FFT.
+         * @param {Array} a - An array of complex numbers {re, im}.
+         * @returns {Array} The FFT of the input array.
+         */
+        function fft(a) {
+            const N = a.length;
+            if (N <= 1) return a;
+
+            // Radix-2 Cooley-Tukey FFT
+            if (N % 2 !== 0) {
+                console.error("FFT size must be a power of 2.");
+                return a; // Fallback for non-power-of-2 sizes
+            }
+
+            const even = [];
+            const odd = [];
+            for (let i = 0; i < N; i++) {
+                if (i % 2 === 0) even.push(a[i]);
+                else odd.push(a[i]);
+            }
+
+            const fftEven = fft(even);
+            const fftOdd = fft(odd);
+
+            const result = new Array(N);
+            for (let k = 0; k < N / 2; k++) {
+                const angle = -2 * Math.PI * k / N;
+                const t = {
+                    re: Math.cos(angle) * fftOdd[k].re - Math.sin(angle) * fftOdd[k].im,
+                    im: Math.cos(angle) * fftOdd[k].im + Math.sin(angle) * fftOdd[k].re
+                };
+                result[k] = {
+                    re: fftEven[k].re + t.re,
+                    im: fftEven[k].im + t.im
+                };
+                result[k + N / 2] = {
+                    re: fftEven[k].re - t.re,
+                    im: fftEven[k].im - t.im
+                };
+            }
+            return result;
+        }
+
+        /**
+         * Shifts the zero-frequency component to the center of the spectrum.
+         * @param {Array} data - The complex data from the FFT.
+         * @param {number} N - The width/height of the square data.
+         */
+        function fftShift(data, N) {
+            const halfN = N / 2;
+            for (let y = 0; y < halfN; y++) {
+                for (let x = 0; x < halfN; x++) {
+                    // Swap quadrants: top-left with bottom-right
+                    let tmp = data[y * N + x];
+                    data[y * N + x] = data[(y + halfN) * N + (x + halfN)];
+                    data[(y + halfN) * N + (x + halfN)] = tmp;
+
+                    // Swap quadrants: top-right with bottom-left
+                    tmp = data[y * N + (x + halfN)];
+                    data[y * N + (x + halfN)] = data[(y + halfN) * N + x];
+                    data[(y + halfN) * N + x] = tmp;
+                }
+            }
+        }
+
+        /**
+         * Visualizes the magnitude of the FFT on the output canvas.
+         * @param {Array} complexData - The shifted complex data.
+         * @param {number} N - The width/height of the data.
+         */
+        function visualize(complexData, N) {
+            const outputImageData = outputCtx.createImageData(N, N);
+            const magnitudes = new Float32Array(N * N);
+            let maxMag = 0;
+
+            for (let i = 0; i < N * N; i++) {
+                const mag = Math.sqrt(complexData[i].re * complexData[i].re + complexData[i].im * complexData[i].im);
+                // Use log scale for better visualization
+                magnitudes[i] = Math.log(1 + mag);
+                if (magnitudes[i] > maxMag) {
+                    maxMag = magnitudes[i];
+                }
+            }
+            
+            if (maxMag === 0) maxMag = 1; // Avoid division by zero
+
+            for (let i = 0; i < N * N; i++) {
+                const value = (magnitudes[i] / maxMag) * 255;
+                const index = i * 4;
+                outputImageData.data[index] = value;     // R
+                outputImageData.data[index + 1] = value; // G
+                outputImageData.data[index + 2] = value; // B
+                outputImageData.data[index + 3] = 255;   // A
+            }
+
+            outputCtx.putImageData(outputImageData, 0, 0);
+        }
+
+        // --- Initial Call ---
+        setActiveButton('draw');
+        initializeCanvases();
+    });
+    </script>
+</body>
+</html>
